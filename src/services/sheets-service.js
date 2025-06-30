@@ -159,28 +159,33 @@ class SheetsService {
         const authClient = await this.auth.getClient();
         const sheets = google.sheets({ version: 'v4', auth: authClient });
         
-        const values = [
-          mergeData.timestamp,
-          mergeData.repository,
-          `#${mergeData.prNumber}`,
-          mergeData.title,
-          mergeData.type,
-          mergeData.sourceBranch,
-          mergeData.targetBranch,
-          mergeData.author,
-          mergeData.mergedBy,
-          mergeData.mergedAt,
-          mergeData.filesChanged,
-          mergeData.additions,
-          mergeData.deletions,
-          mergeData.commits,
-          mergeData.aiAnalysis,
-          mergeData.prUrl
-        ];
+              const values = [
+        mergeData.timestamp,
+        mergeData.repository,
+        `#${mergeData.prNumber}`,
+        mergeData.title,
+        mergeData.type,
+        mergeData.sourceBranch,
+        mergeData.targetBranch,
+        mergeData.author,
+        mergeData.mergedBy,
+        mergeData.mergedAt,
+        mergeData.filesChanged,
+        mergeData.additions,
+        mergeData.deletions,
+        mergeData.commits,
+        mergeData.linearTickets?.join(', ') || '',
+        mergeData.hasBreakingChanges ? 'Yes' : 'No',
+        mergeData.securityImplications || 'None',
+        mergeData.testingCompleted || 'Not specified',
+        mergeData.documentationUpdated || 'Not needed',
+        mergeData.aiAnalysis,
+        mergeData.prUrl
+      ];
 
         const response = await sheets.spreadsheets.values.append({
           spreadsheetId: this.spreadsheetId,
-          range: `Merge Request!A:P`,
+          range: `Merge Request!A:U`,
           valueInputOption: 'RAW',
           insertDataOption: 'INSERT_ROWS',
           requestBody: {
@@ -209,7 +214,7 @@ class SheetsService {
       // Check if header row exists
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: `Merge Request!A1:P1`,
+        range: `Merge Request!A1:U1`,
       });
 
       // If no data or headers don't match, create/update header row
@@ -229,13 +234,18 @@ class SheetsService {
           'Lines Added',
           'Lines Deleted',
           'Commits',
+          'Linear Tickets',
+          'Breaking Changes',
+          'Security Status',
+          'Testing Completed',
+          'Documentation',
           'AI Analysis',
           'PR URL'
         ];
 
         await sheets.spreadsheets.values.update({
           spreadsheetId: this.spreadsheetId,
-          range: `Merge Request!A1:P1`,
+          range: `Merge Request!A1:U1`,
           valueInputOption: 'RAW',
           requestBody: {
             values: [headers]
