@@ -5,6 +5,11 @@ on:
     branches: [ main, master ]
     types: [ closed ]
 
+# Grant necessary permissions to GITHUB_TOKEN
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   log-merge:
     # Only run when PR is actually merged (not just closed)
