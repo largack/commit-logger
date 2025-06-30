@@ -185,5 +185,5 @@ MIT License - see LICENSE file for details.
 
 **Happy coding!** 🚀 Your commits will now be automatically logged and explained. 
 
-Testing version 1.0.1
-Change: I have shared the sheet to our service email.
+Testing version 1.0.2
+Change: Commit Logger worked for the first time.
