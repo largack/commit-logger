@@ -184,3 +184,5 @@ MIT License - see LICENSE file for details.
 ---
 
 **Happy coding!** 🚀 Your commits will now be automatically logged and explained. 
+
+Testing version 1.0.0
