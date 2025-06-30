@@ -387,6 +387,7 @@ MIT License - see LICENSE file for details.
 
 **Happy coding!** 🚀 Your commits will now be automatically logged and explained. 
 
-Testing version 1.0.3
+Testing version 1.0.4
 Change: Commit Logger worked for the first time.
 Update: Testing merge logger with proper GitHub Actions permissions fix.
+Enhancement: Added streamlined PR template with Linear integration.
