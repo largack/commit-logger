@@ -29,7 +29,7 @@ class MergeRequestLogger {
       Logger.info('🤖 Generating AI analysis...');
       const aiAnalysis = await this.openaiService.analyzeMergeRequest(prData);
 
-      // Prepare row data for Google Sheets
+      // Prepare row data for Google Sheets (including enhanced metadata)
       const rowData = {
         timestamp: new Date().toISOString(),
         repository: prData.repository,
@@ -45,6 +45,12 @@ class MergeRequestLogger {
         additions: prData.additions,
         deletions: prData.deletions,
         commits: prData.commits,
+        // Enhanced metadata from streamlined PR template
+        linearTickets: prData.linearTickets || [],
+        hasBreakingChanges: prData.hasBreakingChanges || false,
+        securityImplications: prData.securityImplications || 'None',
+        testingCompleted: prData.testingCompleted || 'Not specified',
+        documentationUpdated: prData.documentationUpdated || 'Not needed',
         aiAnalysis: aiAnalysis,
         prUrl: prData.url
       };
