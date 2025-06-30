@@ -148,6 +148,144 @@ class SheetsService {
       throw error;
     }
   }
+
+  async appendMergeRequestRow(mergeData) {
+    try {
+      Logger.debug('Appending merge request row to Google Sheets', { prNumber: mergeData.prNumber });
+      
+      return await RetryUtil.withRetry(async () => {
+        await this.ensureMergeRequestHeaderRow();
+
+        const authClient = await this.auth.getClient();
+        const sheets = google.sheets({ version: 'v4', auth: authClient });
+        
+        const values = [
+          mergeData.timestamp,
+          mergeData.repository,
+          `#${mergeData.prNumber}`,
+          mergeData.title,
+          mergeData.type,
+          mergeData.sourceBranch,
+          mergeData.targetBranch,
+          mergeData.author,
+          mergeData.mergedBy,
+          mergeData.mergedAt,
+          mergeData.filesChanged,
+          mergeData.additions,
+          mergeData.deletions,
+          mergeData.commits,
+          mergeData.aiAnalysis,
+          mergeData.prUrl
+        ];
+
+        const response = await sheets.spreadsheets.values.append({
+          spreadsheetId: this.spreadsheetId,
+          range: `Merge Request!A:P`,
+          valueInputOption: 'RAW',
+          insertDataOption: 'INSERT_ROWS',
+          requestBody: {
+            values: [values]
+          }
+        });
+
+        Logger.info(`Added merge request row ${response.data.updates.updatedRows} to spreadsheet`);
+        return response.data;
+      }, 3, 1000);
+      
+    } catch (error) {
+      Logger.error('Error appending merge request to Google Sheets', { error: error.message });
+      throw error;
+    }
+  }
+
+  async ensureMergeRequestHeaderRow() {
+    try {
+      const authClient = await this.auth.getClient();
+      const sheets = google.sheets({ version: 'v4', auth: authClient });
+      
+      // First, ensure the "Merge Request" sheet exists
+      await this.ensureMergeRequestSheetExists(sheets);
+      
+      // Check if header row exists
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `Merge Request!A1:P1`,
+      });
+
+      // If no data or headers don't match, create/update header row
+      if (!response.data.values || response.data.values.length === 0) {
+        const headers = [
+          'Timestamp',
+          'Repository',
+          'PR Number',
+          'Title',
+          'Type',
+          'Source Branch',
+          'Target Branch',
+          'Author',
+          'Merged By',
+          'Merged At',
+          'Files Changed',
+          'Lines Added',
+          'Lines Deleted',
+          'Commits',
+          'AI Analysis',
+          'PR URL'
+        ];
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: `Merge Request!A1:P1`,
+          valueInputOption: 'RAW',
+          requestBody: {
+            values: [headers]
+          }
+        });
+
+        Logger.info('✓ Merge Request header row created/updated');
+      }
+    } catch (error) {
+      Logger.error('Error ensuring merge request header row:', error.message);
+      throw error;
+    }
+  }
+
+  async ensureMergeRequestSheetExists(sheets) {
+    try {
+      // Get spreadsheet info to check existing sheets
+      const spreadsheet = await sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId
+      });
+
+      // Check if "Merge Request" sheet already exists
+      const sheetExists = spreadsheet.data.sheets.some(
+        sheet => sheet.properties.title === 'Merge Request'
+      );
+
+      if (!sheetExists) {
+        Logger.info('Creating "Merge Request" sheet');
+        
+        // Create the new sheet
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: {
+            requests: [{
+              addSheet: {
+                properties: {
+                  title: 'Merge Request'
+                }
+              }
+            }]
+          }
+        });
+
+        Logger.info('✓ "Merge Request" sheet created successfully');
+      }
+    } catch (error) {
+      Logger.error('Error ensuring Merge Request sheet exists:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = { SheetsService }; 

@@ -64,6 +64,96 @@ class GitHubService {
     }
   }
 
+  async getPullRequestData() {
+    try {
+      Logger.debug('Fetching pull request data from GitHub');
+      
+      const [owner, repo] = this.repository.split('/');
+      const prNumber = process.env.PR_NUMBER;
+      
+      if (!prNumber) {
+        Logger.warn('No PR_NUMBER found in environment');
+        return null;
+      }
+
+      // Get PR details
+      const { data: pr } = await this.octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: parseInt(prNumber)
+      });
+
+      // Get PR diff/files
+      const { data: files } = await this.octokit.rest.pulls.listFiles({
+        owner,
+        repo,
+        pull_number: parseInt(prNumber)
+      });
+
+      // Get commits in PR
+      const { data: commits } = await this.octokit.rest.pulls.listCommits({
+        owner,
+        repo,
+        pull_number: parseInt(prNumber)
+      });
+
+      // Determine PR type based on branch naming
+      const prType = this.determinePRType(pr.head.ref);
+
+      // Prepare diff text for AI analysis
+      const diffText = this.formatDiffForAI(files);
+      
+      Logger.debug('Successfully fetched PR data', { 
+        number: pr.number,
+        files: files.length,
+        commits: commits.length,
+        type: prType
+      });
+
+      return {
+        number: pr.number,
+        title: pr.title,
+        body: pr.body || '',
+        type: prType,
+        sourceBranch: pr.head.ref,
+        targetBranch: pr.base.ref,
+        author: pr.user.login,
+        mergedBy: pr.merged_by?.login || 'Unknown',
+        mergedAt: pr.merged_at,
+        repository: this.repository,
+        filesChanged: files.length,
+        additions: pr.additions || 0,
+        deletions: pr.deletions || 0,
+        commits: commits.length,
+        url: pr.html_url,
+        diff: diffText,
+        files: files,
+        commitsList: commits
+      };
+    } catch (error) {
+      Logger.error('Error fetching PR data:', error.message);
+      throw error;
+    }
+  }
+
+  determinePRType(branchName) {
+    if (branchName.startsWith('feature/')) {
+      return 'Feature';
+    } else if (branchName.startsWith('hotfix/')) {
+      return 'Hotfix';
+    } else if (branchName.startsWith('bugfix/') || branchName.startsWith('fix/')) {
+      return 'Bugfix';
+    } else if (branchName.startsWith('chore/')) {
+      return 'Chore';
+    } else if (branchName.startsWith('docs/')) {
+      return 'Documentation';
+    } else if (branchName.startsWith('refactor/')) {
+      return 'Refactor';
+    } else {
+      return 'Other';
+    }
+  }
+
   formatDiffForAI(files) {
     if (!files || files.length === 0) return 'No file changes detected.';
 
@@ -76,7 +166,7 @@ class GitHubService {
       
       // Include a portion of the patch for context (limit to avoid token overflow)
       if (file.patch) {
-        const patchLines = file.patch.split('\n').slice(0, 20); // First 20 lines
+        const patchLines = file.patch.split('\n').slice(0, 15); // First 15 lines for PRs
         diffSummary += `Patch preview:\n${patchLines.join('\n')}\n`;
       }
       diffSummary += '\n---\n\n';

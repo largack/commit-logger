@@ -13,6 +13,7 @@
     "github:work": "node scripts/setup-github-account.js work",
     "debug-google": "node scripts/debug-google-auth.js",
     "test-google": "node scripts/test-google-connection.js",
+    "test-merge": "node scripts/test-merge-logger.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
