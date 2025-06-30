@@ -7,20 +7,22 @@ async function testGoogleConnection() {
   console.log('🧪 Testing Google Sheets Connection...\n');
   
   try {
-    // Initialize auth
-    const credentials = {
-      type: 'service_account',
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    };
-    
+    // Initialize auth using GoogleAuth (same as our sheets service)
     console.log('1. Creating authentication...');
-    const auth = google.auth.fromJSON(credentials);
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        type: 'service_account',
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    });
     console.log('   ✅ Auth object created');
     
     // Initialize sheets
     console.log('2. Initializing Google Sheets API...');
-    const sheets = google.sheets({ version: 'v4', auth: auth });
+    const authClient = await auth.getClient();
+    const sheets = google.sheets({ version: 'v4', auth: authClient });
     console.log('   ✅ Sheets API initialized');
     
     // Test connection by reading spreadsheet metadata

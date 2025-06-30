@@ -10,18 +10,24 @@ class SheetsService {
   }
 
   initializeAuth() {
-    const credentials = {
-      type: 'service_account',
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    };
-
-    return google.auth.fromJSON(credentials);
+    // Use GoogleAuth with JWT credentials - this is the correct way for service accounts
+    return new google.auth.GoogleAuth({
+      credentials: {
+        type: 'service_account',
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+    });
   }
 
   async ensureHeaderRow() {
     try {
-      const sheets = google.sheets({ version: 'v4', auth: this.auth });
+      const authClient = await this.auth.getClient();
+      const sheets = google.sheets({ version: 'v4', auth: authClient });
+      
+      // First, ensure the sheet tab exists
+      await this.ensureSheetExists(sheets);
       
       // Check if header row exists
       const response = await sheets.spreadsheets.values.get({
@@ -62,6 +68,43 @@ class SheetsService {
     }
   }
 
+  async ensureSheetExists(sheets) {
+    try {
+      // Get spreadsheet info to check existing sheets
+      const spreadsheet = await sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId
+      });
+
+      // Check if our sheet already exists
+      const sheetExists = spreadsheet.data.sheets.some(
+        sheet => sheet.properties.title === this.sheetName
+      );
+
+      if (!sheetExists) {
+        Logger.info(`Creating sheet "${this.sheetName}"`);
+        
+        // Create the new sheet
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: {
+            requests: [{
+              addSheet: {
+                properties: {
+                  title: this.sheetName
+                }
+              }
+            }]
+          }
+        });
+
+        Logger.info(`✓ Sheet "${this.sheetName}" created successfully`);
+      }
+    } catch (error) {
+      Logger.error('Error ensuring sheet exists:', error.message);
+      throw error;
+    }
+  }
+
   async appendRow(commitData) {
     try {
       Logger.debug('Appending row to Google Sheets', { sha: commitData.sha });
@@ -69,7 +112,8 @@ class SheetsService {
       return await RetryUtil.withRetry(async () => {
         await this.ensureHeaderRow();
 
-        const sheets = google.sheets({ version: 'v4', auth: this.auth });
+        const authClient = await this.auth.getClient();
+        const sheets = google.sheets({ version: 'v4', auth: authClient });
         
         const values = [
           commitData.timestamp,
