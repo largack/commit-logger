@@ -124,6 +124,208 @@ The Google Sheet will contain these columns:
 | AI Explanation | GPT-4 generated explanation |
 | Commit URL | Direct link to GitHub commit |
 
+## Architecture & Workflows
+
+### System Architecture
+
+```mermaid
+graph TB
+    A[GitHub Repository] --> B[GitHub Actions]
+    B --> C{Event Type}
+    
+    C -->|Push to main/dev| D[Commit Logger Workflow]
+    C -->|PR Merge| E[Merge Request Logger Workflow]
+    
+    D --> F[Fetch Commit Data]
+    E --> G[Fetch PR Data]
+    
+    F --> H[GitHub Service]
+    G --> H
+    
+    H --> I[OpenAI Service]
+    I --> J[Generate AI Explanation]
+    
+    J --> K[Google Sheets Service]
+    K --> L[Log to Spreadsheet]
+    
+    L --> M{Sheet Type}
+    M -->|Commits| N[CommitLog Sheet]
+    M -->|Merges| O[MergeRequests Sheet]
+    
+    subgraph "External APIs"
+        P[GitHub API]
+        Q[OpenAI GPT-4 API]
+        R[Google Sheets API]
+    end
+    
+    H -.-> P
+    I -.-> Q
+    K -.-> R
+```
+
+### Commit Logger Workflow
+
+```mermaid
+sequenceDiagram
+    participant GH as GitHub
+    participant GA as GitHub Actions
+    participant CL as Commit Logger
+    participant GS as GitHub Service
+    participant OS as OpenAI Service
+    participant SS as Sheets Service
+    participant Sheet as Google Sheets
+    
+    GH->>GA: Push to main/dev branch
+    GA->>CL: Trigger commit-logger.yml
+    CL->>GS: Fetch commit details
+    GS->>GH: API call for commit data
+    GH-->>GS: Return commit info
+    GS-->>CL: Commit data (files, changes, etc.)
+    
+    CL->>OS: Generate explanation
+    OS->>OpenAI: Analyze code changes
+    OpenAI-->>OS: AI explanation
+    OS-->>CL: Formatted explanation
+    
+    CL->>SS: Prepare log entry
+    SS->>Sheet: Write to CommitLog sheet
+    Sheet-->>SS: Confirmation
+    SS-->>CL: Success
+    
+    CL->>GA: Log completion status
+```
+
+### Merge Request Logger Workflow
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant PR as Pull Request
+    participant GA as GitHub Actions
+    participant ML as Merge Logger
+    participant GS as GitHub Service
+    participant OS as OpenAI Service
+    participant SS as Sheets Service
+    participant Sheet as Google Sheets
+    
+    Dev->>PR: Create & merge PR
+    PR->>GA: Trigger merge-logger.yml
+    GA->>ML: Execute merge workflow
+    
+    ML->>GS: Fetch PR details
+    GS->>GitHub: Get PR metadata
+    GitHub-->>GS: PR info (title, branch, files)
+    GS-->>ML: Structured PR data
+    
+    ML->>ML: Categorize by branch name
+    Note over ML: feature/* = Feature<br/>hotfix/* = Hotfix<br/>other = Other
+    
+    ML->>OS: Generate merge summary
+    OS->>OpenAI: Analyze PR changes
+    OpenAI-->>OS: AI summary
+    OS-->>ML: Merge explanation
+    
+    ML->>SS: Log merge request
+    SS->>Sheet: Write to MergeRequests sheet
+    Sheet-->>SS: Success confirmation
+    SS-->>ML: Logged successfully
+    
+    ML->>GA: Complete workflow
+```
+
+### Data Flow Architecture
+
+```mermaid
+flowchart LR
+    subgraph "Data Sources"
+        A[Git Commits]
+        B[Pull Requests]
+        C[Branch Names]
+        D[File Changes]
+    end
+    
+    subgraph "Processing Layer"
+        E[GitHub Service]
+        F[OpenAI Service]
+        G[Classification Logic]
+    end
+    
+    subgraph "Storage Layer"
+        H[Google Sheets]
+        I[CommitLog Sheet]
+        J[MergeRequests Sheet]
+    end
+    
+    subgraph "Output"
+        K[Commit Tracking]
+        L[Merge Analytics]
+        M[AI Insights]
+    end
+    
+    A --> E
+    B --> E
+    C --> G
+    D --> E
+    
+    E --> F
+    G --> F
+    F --> H
+    
+    H --> I
+    H --> J
+    
+    I --> K
+    J --> L
+    F --> M
+```
+
+## Proposed Improvements
+
+### 1. 🔄 **Real-time Collaboration Metrics**
+**Enhancement**: Add team collaboration insights by tracking:
+- Code reviewer assignments and response times
+- Cross-team contributions and knowledge sharing
+- Commit frequency patterns and developer productivity metrics
+- Integration with Slack/Teams for real-time notifications
+
+**Implementation**: Extend GitHub Service to fetch PR review data, add new sheet columns for collaboration metrics, and create webhook endpoints for real-time updates.
+
+### 2. 🧪 **Automated Testing Integration**
+**Enhancement**: Integrate with CI/CD pipelines to capture:
+- Test coverage changes per commit
+- Build success/failure rates
+- Performance benchmarks and regression detection
+- Automated quality gates and alerts
+
+**Implementation**: Add CI service integration, extend workflow to capture test results, create performance tracking dashboard, and implement automated quality notifications.
+
+### 3. 🎯 **Smart Code Quality Analysis**
+**Enhancement**: Implement intelligent code quality scoring:
+- Static analysis integration (ESLint, SonarQube)
+- Technical debt tracking and trend analysis
+- Code complexity metrics and maintainability scores
+- Automated refactoring suggestions from AI
+
+**Implementation**: Integrate static analysis tools, create quality scoring algorithms, add trend visualization, and enhance OpenAI prompts for refactoring suggestions.
+
+### 4. 📊 **Advanced Analytics Dashboard**
+**Enhancement**: Create a comprehensive analytics interface:
+- Interactive charts for commit patterns and team velocity
+- Predictive analytics for project timeline estimation
+- Risk assessment based on code complexity and change frequency
+- Custom reporting with exportable insights
+
+**Implementation**: Build React/Vue dashboard, implement data visualization libraries, create predictive models, and add export functionality with scheduled reports.
+
+### 5. 🔐 **Enhanced Security & Compliance**
+**Enhancement**: Strengthen security and add compliance features:
+- Automated security vulnerability scanning per commit
+- Compliance tracking for regulatory requirements (SOX, GDPR)
+- Audit trail with immutable logging
+- Role-based access control for different data sensitivity levels
+
+**Implementation**: Integrate security scanning tools, add compliance frameworks, implement blockchain-based audit trails, and create granular permission systems.
+
 ## Customization
 
 ### Changing the AI Model
