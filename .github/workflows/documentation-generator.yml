@@ -1,0 +1,83 @@
+name: Documentation Generator
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt_template:
+        description: 'Documentation prompt template'
+        required: true
+        default: 'Generate comprehensive documentation for this repository including: 1) Project overview, 2) Installation instructions, 3) Usage examples, 4) API reference, 5) Contributing guidelines'
+        type: string
+      documentation_type:
+        description: 'Type of documentation to generate'
+        required: true
+        default: 'General'
+        type: choice
+        options:
+          - 'General'
+          - 'API Reference'
+          - 'User Guide'
+          - 'Developer Guide'
+          - 'Troubleshooting'
+          - 'Architecture'
+          - 'Custom'
+      include_code_analysis:
+        description: 'Include code analysis in documentation'
+        required: false
+        default: true
+        type: boolean
+      output_format:
+        description: 'Documentation output format preference'
+        required: true
+        default: 'Structured'
+        type: choice
+        options:
+          - 'Structured'
+          - 'Markdown'
+          - 'Technical Spec'
+          - 'User Manual'
+
+jobs:
+  generate-documentation:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Get full history for comprehensive analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Documentation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4' }}
+          GOOGLE_SHEETS_SPREADSHEET_ID: ${{ secrets.GOOGLE_SHEETS_SPREADSHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node src/documentation-generator.js \
+            --prompt="${{ github.event.inputs.prompt_template }}" \
+            --type="${{ github.event.inputs.documentation_type }}" \
+            --include-code="${{ github.event.inputs.include_code_analysis }}" \
+            --format="${{ github.event.inputs.output_format }}" \
+            --repository="${{ github.repository }}" \
+            --triggered-by="${{ github.actor }}"
+
+      - name: Documentation Generation Summary
+        run: |
+          echo "✅ Documentation generated successfully"
+          echo "📊 Check your Google Sheets 'Documentation' tab for the results"
+          echo "🔗 Spreadsheet: https://docs.google.com/spreadsheets/d/${{ secrets.GOOGLE_SHEETS_SPREADSHEET_ID }}" 
