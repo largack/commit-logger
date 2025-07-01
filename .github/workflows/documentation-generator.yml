@@ -59,6 +59,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Debug Arguments
+        run: |
+          echo "🔍 Debugging workflow inputs:"
+          echo "Prompt: '${{ github.event.inputs.prompt_template }}'"
+          echo "Type: '${{ github.event.inputs.documentation_type }}'"
+          echo "Include Code: '${{ github.event.inputs.include_code_analysis }}'"
+          echo "Format: '${{ github.event.inputs.output_format }}'"
+          echo "Repository: '${{ github.repository }}'"
+          echo "Triggered By: '${{ github.actor }}'"
+
       - name: Generate Documentation
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -67,6 +77,7 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOG_LEVEL: debug
         run: |
           node src/documentation-generator.js \
             --prompt="${{ github.event.inputs.prompt_template }}" \

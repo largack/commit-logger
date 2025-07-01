@@ -15,22 +15,52 @@ class DocumentationGenerator {
     const args = process.argv.slice(2);
     const options = {};
     
+    Logger.debug('Raw command line arguments:', args);
+    Logger.debug('Number of arguments:', args.length);
+    
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
+      Logger.debug(`Processing argument ${i}: "${arg}"`);
+      
       if (arg.startsWith('--')) {
-        const key = arg.substring(2);
-        const value = args[i + 1];
-        
-        // Handle boolean arguments
-        if (value === 'true' || value === 'false') {
-          options[key] = value === 'true';
-        } else {
-          options[key] = value;
+        // Handle --key=value format
+        if (arg.includes('=')) {
+          const [key, ...valueParts] = arg.substring(2).split('=');
+          const value = valueParts.join('='); // In case value contains '='
+          
+          // Handle boolean arguments
+          if (value === 'true' || value === 'false') {
+            options[key] = value === 'true';
+          } else {
+            options[key] = value;
+          }
+          Logger.debug(`Parsed ${key} = "${value}" (key=value format)`);
+        } 
+        // Handle --key value format
+        else {
+          const key = arg.substring(2);
+          const value = args[i + 1];
+          
+          // Check if we have a value
+          if (value === undefined || value.startsWith('--')) {
+            Logger.warn(`No value provided for argument: ${key}`);
+            continue;
+          }
+          
+          // Handle boolean arguments
+          if (value === 'true' || value === 'false') {
+            options[key] = value === 'true';
+          } else {
+            options[key] = value;
+          }
+          Logger.debug(`Parsed ${key} = "${value}" (separate args format)`);
+          i++; // Skip the next argument as it's the value
         }
-        i++; // Skip the next argument as it's the value
       }
     }
     
+    Logger.debug('Final parsed options:', options);
+    Logger.debug('Options keys:', Object.keys(options));
     return options;
   }
 
@@ -232,7 +262,12 @@ ${fileTypes}`;
       
       // Validate required options
       if (!options.prompt || !options.repository) {
-        throw new Error('Missing required options: prompt and repository');
+        Logger.error('Missing required options', { 
+          receivedOptions: Object.keys(options),
+          prompt: options.prompt ? 'present' : 'missing',
+          repository: options.repository ? 'present' : 'missing'
+        });
+        throw new Error(`Missing required options: prompt and repository. Received: ${JSON.stringify(options)}`);
       }
       
       // Gather repository information
