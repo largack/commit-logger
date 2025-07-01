@@ -15,11 +15,19 @@ class DocumentationGenerator {
     const args = process.argv.slice(2);
     const options = {};
     
+    Logger.debug('Raw command line arguments:', args);
+    
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
       if (arg.startsWith('--')) {
         const key = arg.substring(2);
         const value = args[i + 1];
+        
+        // Check if we have a value
+        if (value === undefined || value.startsWith('--')) {
+          Logger.warn(`No value provided for argument: ${key}`);
+          continue;
+        }
         
         // Handle boolean arguments
         if (value === 'true' || value === 'false') {
@@ -31,6 +39,7 @@ class DocumentationGenerator {
       }
     }
     
+    Logger.debug('Parsed options:', options);
     return options;
   }
 
@@ -232,7 +241,12 @@ ${fileTypes}`;
       
       // Validate required options
       if (!options.prompt || !options.repository) {
-        throw new Error('Missing required options: prompt and repository');
+        Logger.error('Missing required options', { 
+          receivedOptions: Object.keys(options),
+          prompt: options.prompt ? 'present' : 'missing',
+          repository: options.repository ? 'present' : 'missing'
+        });
+        throw new Error(`Missing required options: prompt and repository. Received: ${JSON.stringify(options)}`);
       }
       
       // Gather repository information
