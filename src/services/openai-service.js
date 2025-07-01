@@ -127,6 +127,105 @@ Please provide:
 
 Keep the analysis comprehensive but concise (3-4 sentences).`;
   }
+
+  async generateDocumentation(documentationRequest) {
+    try {
+      Logger.debug('Generating AI documentation', { type: documentationRequest.type });
+      
+      return await RetryUtil.withRetry(async () => {
+        const prompt = this.buildDocumentationPrompt(documentationRequest);
+        
+        const completion = await this.openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL || "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: this.getDocumentationSystemPrompt(documentationRequest.type, documentationRequest.format)
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          max_tokens: 2000,
+          temperature: 0.2
+        });
+
+        const documentation = completion.choices[0].message.content.trim();
+        Logger.debug('AI documentation generated successfully');
+        return documentation;
+      }, 3, 2000);
+      
+    } catch (error) {
+      Logger.error('Error generating AI documentation', { error: error.message });
+      return `Error generating AI documentation: ${error.message}`;
+    }
+  }
+
+  getDocumentationSystemPrompt(type, format) {
+    const basePrompt = "You are an expert technical writer who creates comprehensive, clear, and well-structured documentation.";
+    
+    const typeSpecific = {
+      'General': "Focus on providing a complete overview that helps both new users and experienced developers understand the project.",
+      'API Reference': "Create detailed API documentation with examples, parameters, return values, and error handling.",
+      'User Guide': "Write user-friendly documentation that guides users through common tasks and workflows.",
+      'Developer Guide': "Focus on technical implementation details, architecture decisions, and development workflows.",
+      'Troubleshooting': "Create problem-solution oriented documentation that helps users resolve common issues.",
+      'Architecture': "Explain the system architecture, design patterns, and technical decisions in detail.",
+      'Custom': "Adapt your writing style to the specific requirements provided in the prompt."
+    };
+
+    const formatSpecific = {
+      'Structured': "Use clear headings, bullet points, and organized sections.",
+      'Markdown': "Format output as clean Markdown with proper syntax and structure.",
+      'Technical Spec': "Use formal technical specification language with precise terminology.",
+      'User Manual': "Write in a friendly, step-by-step instructional style."
+    };
+
+    return `${basePrompt} ${typeSpecific[type] || typeSpecific['General']} ${formatSpecific[format] || formatSpecific['Structured']} Ensure the documentation is accurate, actionable, and well-organized.`;
+  }
+
+  buildDocumentationPrompt(request) {
+    let prompt = `Generate documentation for the following repository:
+
+**Repository:** ${request.repository}
+**Documentation Type:** ${request.type}
+**Output Format:** ${request.format}
+**Custom Prompt:** ${request.prompt}
+
+**Repository Structure:**
+${request.projectStructure}
+
+**README Content:**
+${request.readmeContent}`;
+
+    if (request.includeCodeAnalysis && request.codeAnalysis) {
+      prompt += `
+
+**Code Analysis:**
+${request.codeAnalysis}`;
+    }
+
+    if (request.packageInfo) {
+      prompt += `
+
+**Package Information:**
+${request.packageInfo}`;
+    }
+
+    prompt += `
+
+**Requirements:**
+1. Follow the custom prompt instructions carefully
+2. Ensure the documentation matches the specified type and format
+3. Make the content practical and actionable
+4. Include relevant examples where appropriate
+5. Structure the content for easy reading and navigation
+
+Please generate comprehensive documentation based on the above information.`;
+
+    return prompt;
+  }
 }
 
 module.exports = { OpenAIService }; 

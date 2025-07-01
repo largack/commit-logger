@@ -296,6 +296,134 @@ class SheetsService {
       throw error;
     }
   }
+
+  async appendDocumentationRow(docData) {
+    try {
+      Logger.debug('Appending documentation row to Google Sheets', { type: docData.type });
+      
+      return await RetryUtil.withRetry(async () => {
+        await this.ensureDocumentationHeaderRow();
+
+        const authClient = await this.auth.getClient();
+        const sheets = google.sheets({ version: 'v4', auth: authClient });
+        
+        const values = [
+          docData.timestamp,
+          docData.repository,
+          docData.type,
+          docData.format,
+          docData.triggeredBy,
+          docData.customPrompt,
+          docData.includeCodeAnalysis ? 'Yes' : 'No',
+          docData.generatedContent,
+          docData.wordCount || '',
+          docData.generationTime || '',
+          docData.status || 'Completed'
+        ];
+
+        const response = await sheets.spreadsheets.values.append({
+          spreadsheetId: this.spreadsheetId,
+          range: `Documentation!A:K`,
+          valueInputOption: 'RAW',
+          insertDataOption: 'INSERT_ROWS',
+          requestBody: {
+            values: [values]
+          }
+        });
+
+        Logger.info(`Added documentation row ${response.data.updates.updatedRows} to spreadsheet`);
+        return response.data;
+      }, 3, 1000);
+      
+    } catch (error) {
+      Logger.error('Error appending documentation to Google Sheets', { error: error.message });
+      throw error;
+    }
+  }
+
+  async ensureDocumentationHeaderRow() {
+    try {
+      const authClient = await this.auth.getClient();
+      const sheets = google.sheets({ version: 'v4', auth: authClient });
+      
+      // First, ensure the "Documentation" sheet exists
+      await this.ensureDocumentationSheetExists(sheets);
+      
+      // Check if header row exists
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: `Documentation!A1:K1`,
+      });
+
+      // If no data or headers don't match, create/update header row
+      if (!response.data.values || response.data.values.length === 0) {
+        const headers = [
+          'Timestamp',
+          'Repository',
+          'Documentation Type',
+          'Output Format',
+          'Triggered By',
+          'Custom Prompt',
+          'Include Code Analysis',
+          'Generated Content',
+          'Word Count',
+          'Generation Time (ms)',
+          'Status'
+        ];
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: this.spreadsheetId,
+          range: `Documentation!A1:K1`,
+          valueInputOption: 'RAW',
+          requestBody: {
+            values: [headers]
+          }
+        });
+
+        Logger.info('✓ Documentation header row created/updated');
+      }
+    } catch (error) {
+      Logger.error('Error ensuring documentation header row:', error.message);
+      throw error;
+    }
+  }
+
+  async ensureDocumentationSheetExists(sheets) {
+    try {
+      // Get spreadsheet info to check existing sheets
+      const spreadsheet = await sheets.spreadsheets.get({
+        spreadsheetId: this.spreadsheetId
+      });
+
+      // Check if "Documentation" sheet already exists
+      const sheetExists = spreadsheet.data.sheets.some(
+        sheet => sheet.properties.title === 'Documentation'
+      );
+
+      if (!sheetExists) {
+        Logger.info('Creating "Documentation" sheet');
+        
+        // Create the new sheet
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: {
+            requests: [{
+              addSheet: {
+                properties: {
+                  title: 'Documentation'
+                }
+              }
+            }]
+          }
+        });
+
+        Logger.info('✓ "Documentation" sheet created successfully');
+      }
+    } catch (error) {
+      Logger.error('Error ensuring Documentation sheet exists:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = { SheetsService }; 

@@ -7,6 +7,7 @@ An automated framework that logs Git commits to Google Sheets with AI-powered ex
 - 🤖 **AI-Powered Explanations**: Uses OpenAI GPT-4 to analyze and explain code changes
 - 📋 **Google Sheets Integration**: Automatically logs commit data to a spreadsheet
 - ⚡ **GitHub Actions Automation**: Triggers on every push/PR merge
+- 📝 **Manual Documentation Generation**: On-demand AI documentation with customizable prompts
 - 🔐 **Secure Configuration**: Uses GitHub Secrets for API keys
 - 📈 **Rich Commit Data**: Tracks author, files changed, lines added/deleted, and more
 
@@ -89,18 +90,87 @@ Or run the full commit logger (requires GitHub environment variables):
 npm start
 ```
 
+## Documentation Generation
+
+### Manual Documentation Creation
+
+The framework includes a powerful documentation generator that can create comprehensive project documentation on-demand using AI.
+
+#### Using the GitHub Actions Workflow
+
+1. Go to your repository's **Actions** tab
+2. Select **Documentation Generator** workflow
+3. Click **Run workflow**
+4. Fill in the form:
+   - **Documentation prompt template**: Customize what you want documented
+   - **Documentation type**: Choose from General, API Reference, User Guide, etc.
+   - **Include code analysis**: Whether to analyze the codebase
+   - **Output format**: Structured, Markdown, Technical Spec, or User Manual
+
+#### Available Documentation Types
+
+- **General**: Complete project overview for all audiences
+- **API Reference**: Detailed API documentation with examples
+- **User Guide**: Step-by-step user instructions
+- **Developer Guide**: Technical implementation details
+- **Troubleshooting**: Problem-solution oriented documentation
+- **Architecture**: System design and technical decisions
+- **Custom**: Use your own specific requirements
+
+#### Example Usage
+
+```bash
+# Local testing of documentation generator
+node scripts/test-documentation-generator.js
+
+# Manual command line usage
+node src/documentation-generator.js \
+  --prompt="Generate API documentation with examples" \
+  --type="API Reference" \
+  --include-code="true" \
+  --format="Markdown" \
+  --repository="my-project" \
+  --triggered-by="username"
+```
+
+#### Documentation Sheet
+
+All generated documentation is logged to a **Documentation** sheet in your Google Sheets with:
+
+- Timestamp and repository info
+- Documentation type and format
+- Custom prompt used
+- Generated content (full documentation)
+- Word count and generation time
+- Status and metadata
+
+This allows you to:
+- Track documentation history
+- Compare different documentation approaches
+- Maintain versioned documentation
+- Share AI-generated docs with your team
+
 ## Project Structure
 
 ```
 commit-logger/
-├── .github/workflows/commit-logger.yml  # GitHub Actions workflow
+├── .github/workflows/
+│   ├── commit-logger.yml               # Automatic commit logging
+│   ├── merge-logger.yml                # PR merge tracking  
+│   └── documentation-generator.yml     # Manual documentation generation
 ├── src/
 │   ├── index.js                        # Main entry point
-│   ├── commit-logger.js                # Core orchestrator
+│   ├── commit-logger.js                # Core commit orchestrator
+│   ├── merge-logger.js                 # Merge request handler
+│   ├── documentation-generator.js      # AI documentation generator
 │   └── services/
 │       ├── github-service.js           # GitHub API integration
 │       ├── openai-service.js           # OpenAI API integration
 │       └── sheets-service.js           # Google Sheets API integration
+├── scripts/
+│   ├── test-local.js                   # Local testing suite
+│   ├── test-merge-logger.js            # Merge logger testing
+│   └── test-documentation-generator.js # Documentation testing
 ├── .env.example                        # Environment variables template
 ├── package.json                        # Dependencies
 └── README.md                          # This file
